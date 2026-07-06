@@ -1,0 +1,20 @@
+[package]
+name = "confidential-pqc-tee"
+version = "3.0.0"
+edition = "2021"
+
+[dependencies]
+kvm-ioctls = "0.14.0"
+io-uring = "0.6.3"
+libc = "0.2.150"
+nix = { version = "0.27", features = ["user", "mman"] }
+thiserror = "1.0"
+env_logger = "0.10"
+hex = "0.4"
+sha2 = "0.10"
+chacha20poly1305 = "0.10"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
