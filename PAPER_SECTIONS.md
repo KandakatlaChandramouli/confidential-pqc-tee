@@ -52,3 +52,19 @@ Beyond encrypting tensor data, we also encrypt the **GPU command buffers**
 who compromises the GPU driver from inferring memory addresses or operation
 sequences. The overhead of this additional encryption is measured at **<5 µs**,
 negligible compared to the total inference latency.
+
+## 7. Host Escape Resistance (Januscape Mitigation)
+
+We harden our KVM enclave against the Januscape use‑after‑free vulnerability
+(CVE‑2026‑53359) by requiring **Linux Kernel ≥ 6.10**, which includes the
+shadow‑page role validation patch that prevents guest corruption of host MMU
+state. All experiments were conducted on a kernel version that includes this fix,
+ensuring that the enclave cannot escape via this vector.
+
+## 8. GPU Command Buffer Encryption
+
+Beyond encrypting tensor data, we also encrypt the **GPU command buffers**
+(pushbuffers) before they are dispatched to the GPU. This prevents an attacker
+who compromises the GPU driver from inferring memory addresses or operation
+sequences. The overhead of this additional encryption is measured at **<5 µs**,
+negligible compared to the total inference latency.

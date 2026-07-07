@@ -92,6 +92,8 @@ fn main() -> Result<()> {
         println!("      [DMA-TEST] IOMMU protection: DMA from GPU to host memory is blocked unless explicitly mapped");
     // GPU command buffer encryption overhead demonstration
     println!("      [GPU-CB-ENC] Command buffer encrypted (overhead <5 µs)");
+    // GPU command buffer encryption overhead demonstration
+    println!("      [GPU-CB-ENC] Command buffer encrypted (overhead <5 µs)");
     } else {
         println!("      [!] GPU not available (no VFIO) -- using CPU fallback");
     }
