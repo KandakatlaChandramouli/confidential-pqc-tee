@@ -1,0 +1,7 @@
+Model Size Diversity (avg ms per round):
+  small (16 inputs): 40.2 ms
+  medium (256 inputs): 40.3 ms
+  large (4096 inputs): 42.2 ms
+
+Concurrency: 10 threads x 10 rounds = 100 rounds in 2635 ms
+Throughput: 38.0 rounds/sec
