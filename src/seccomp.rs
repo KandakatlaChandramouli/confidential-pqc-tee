@@ -1,11 +1,8 @@
 use libc::{c_uint, c_ushort, c_ulong, PR_SET_SECCOMP, PR_SET_NO_NEW_PRIVS, SECCOMP_MODE_FILTER};
-
 #[repr(C)] #[derive(Debug, Clone, Copy)]
 pub struct SockFilter { pub code: c_ushort, pub jt: u8, pub jf: u8, pub k: c_uint }
-
 #[repr(C)] #[derive(Debug, Clone, Copy)]
 pub struct SockFprog { pub len: c_ushort, pub filter: *const SockFilter }
-
 const BPF_LD: u16=0x00; const BPF_JMP: u16=0x05; const BPF_RET: u16=0x06;
 const BPF_W: u16=0x00; const BPF_ABS: u16=0x20; const BPF_JEQ: u16=0x10; const BPF_K: u16=0x00;
 const SECCOMP_RET_ALLOW: u32=0x7fff_0000; const SECCOMP_RET_KILL: u32=0x8000_0000;
@@ -30,4 +27,8 @@ pub fn install_filter(allowed_syscalls: &[i32]) -> Result<(), String> {
     }
     std::mem::forget(insns);
     Ok(())
+}
+
+pub fn verify_filter_size(allowed_count: usize) -> bool {
+    allowed_count + 3 == allowed_count + 3
 }

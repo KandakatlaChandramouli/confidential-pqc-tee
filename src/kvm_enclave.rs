@@ -29,7 +29,35 @@ impl NetworkBuffer {
     }
 }
 
-pub struct KvmEnclave { pub vcpu: VcpuFd, pub guest_mem: NonNull<u8>, _gp: *mut libc::c_void, pub net_buffer: NetworkBuffer }
+#[derive(Debug, Clone)]
+pub struct SevAttestationReport {
+    pub measurement: Vec<u8>,
+    pub platform_version: u8,
+    pub guest_policy: u64,
+    pub signature: Vec<u8>,
+    pub timestamp: u64,
+}
+
+pub struct GpuPassthrough {
+    pub enabled: bool,
+}
+
+impl GpuPassthrough {
+    pub fn new() -> Self { GpuPassthrough { enabled: false } }
+    pub fn is_available(&self) -> bool { std::path::Path::new("/dev/vfio/vfio").exists() }
+    pub fn enable(&mut self) -> Result<()> {
+        if self.is_available() { self.enabled = true; Ok(()) }
+        else { Err(TeeError::Gpu("GPU passthrough not available (no VFIO)".into())) }
+    }
+}
+
+pub struct KvmEnclave {
+    pub vcpu: VcpuFd,
+    pub guest_mem: NonNull<u8>,
+    _gp: *mut libc::c_void,
+    pub net_buffer: NetworkBuffer,
+    pub gpu: GpuPassthrough,
+}
 
 impl KvmEnclave {
     pub fn new() -> Result<Self> {
@@ -50,12 +78,25 @@ impl KvmEnclave {
         regs.rip=0x1000; regs.rflags=0x2;
         vcpu.set_regs(&regs).map_err(|e| TeeError::Kvm(e))?;
         let nb = NetworkBuffer::new(unsafe { (gp as *mut u8).add(0x100000) }, 0x100000);
-        Ok(KvmEnclave { vcpu, guest_mem: gm, _gp: gp, net_buffer: nb })
+        Ok(KvmEnclave { vcpu, guest_mem: gm, _gp: gp, net_buffer: nb, gpu: GpuPassthrough::new() })
     }
     pub fn write_guest_code(&self, offset: usize, code: &[u8]) -> Result<()> {
         if offset+code.len() > ENCLAVE_MEM_SIZE { return Err(TeeError::Io(std::io::Error::new(std::io::ErrorKind::InvalidInput, "bounds"))); }
         unsafe { std::ptr::copy_nonoverlapping(code.as_ptr(), self.guest_mem.as_ptr().add(offset), code.len()); }
         Ok(())
+    }
+    pub fn generate_sev_report(&self, signer: &crate::pqcrypto::PqcSigner) -> Result<SevAttestationReport> {
+        let mut h = Sha512::new();
+        h.update(unsafe { std::slice::from_raw_parts(self.guest_mem.as_ptr(), ENCLAVE_MEM_SIZE.min(65536)) });
+        let measurement = h.finalize().to_vec();
+        let report = SevAttestationReport {
+            measurement: measurement.clone(),
+            platform_version: 1,
+            guest_policy: 0x03,
+            signature: signer.sign(&measurement)?,
+            timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        };
+        Ok(report)
     }
     pub fn attestation_hash(&self) -> Vec<u8> {
         let mut h = Sha512::new();
@@ -64,5 +105,4 @@ impl KvmEnclave {
     }
     pub fn run(&self) -> std::result::Result<kvm_ioctls::VcpuExit, kvm_ioctls::Error> { self.vcpu.run() }
 }
-
 impl Drop for KvmEnclave { fn drop(&mut self) { unsafe { libc::munmap(self._gp, ENCLAVE_MEM_SIZE); } } }
